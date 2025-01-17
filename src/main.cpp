@@ -115,14 +115,14 @@ void loop()
     Serial.println(relayState);
 
     // nonaktifkan pesan lcd
-    // lcd.setCursor(0, 0);
-    // lcd.print("Prss: ");
-    // lcd.print(pressCount);
-    // lcd.print("      ");
-    // lcd.setCursor(0, 1);
-    // lcd.print("Bbn: ");
-    // lcd.print(weight, 2);
-    // mode_skala == 1 ? lcd.print("kg   ") : lcd.print("gr   ");
+    lcd.setCursor(0, 0);
+    lcd.print("Cycle: ");
+    lcd.print(pressCount);
+    lcd.print("      ");
+    lcd.setCursor(0, 1);
+    lcd.print("Beban: ");
+    lcd.print(weight, 2);
+    mode_skala == 1 ? lcd.print("kg   ") : lcd.print("gr   ");
   }
   else
   {
