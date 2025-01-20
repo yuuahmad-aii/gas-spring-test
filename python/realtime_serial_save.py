@@ -47,7 +47,7 @@ def write_to_serial(ser):
         print(f"Error during writing: {e}")
 
 
-def main(port="COM13", baudrate=9600, timeout=1):
+def main(port="COM5", baudrate=9600, timeout=1):
     """Main function to handle serial communication."""
     # Open serial connection
     try:
@@ -77,4 +77,4 @@ def main(port="COM13", baudrate=9600, timeout=1):
 
 
 if __name__ == "__main__":
-    main(port="COM13", baudrate=9600)
+    main(port="COM5", baudrate=9600)

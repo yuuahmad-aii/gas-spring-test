@@ -3,6 +3,9 @@
 #include <HX711.h>
 #include <EEPROM.h>
 
+// konfigurasi setting parameter
+#define DEBUG_MODE 0
+
 // Pin konfigurasi
 #define DT_PIN A1    // Data pin HX711
 #define SCK_PIN A0   // Clock pin HX711
@@ -13,13 +16,13 @@ HX711 scale;
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 // Parameter default
-unsigned long pressDuration = 2000;   // Lama penekanan (ms)
-unsigned long releaseDuration = 2000; // Lama pelepasan (ms)
-float calibrationFactor = 2280.0;     // Faktor kalibrasi HX711
-uint8_t inverseRelay = 1;             // balikkan nilai logic relay(active ketika low)
-uint8_t mode_skala = 0;               // mode skala menggunakan kg atau gram
-bool isTesting = false;               // Status pengujian
-int pressCount = 0;                   // Jumlah penekanan
+unsigned int pressDuration = 2000;   // Lama penekanan (ms)
+unsigned int releaseDuration = 2000; // Lama pelepasan (ms)
+float calibrationFactor = 2280.0;    // Faktor kalibrasi HX711
+uint8_t inverseRelay = 1;            // balikkan nilai logic relay(active ketika low)
+uint8_t mode_skala = 0;              // mode skala menggunakan kg atau gram
+bool isTesting = false;              // Status pengujian
+unsigned long pressCount = 0;        // Jumlah penekanan
 
 // EEPROM alamat penyimpanan
 #define EEPROM_PRESS_DURATION_ADDR 0
@@ -45,7 +48,9 @@ void setup()
 
   // Inisialisasi HX711
   scale.begin(DT_PIN, SCK_PIN);
+#if DEBUG_MODE == 1
   Serial.println(EEPROM.length()); // lihat panjang eeprom
+#endif
   delay(5000);
   loadParametersFromEEPROM();
   scale.set_scale(calibrationFactor);
@@ -58,10 +63,6 @@ void setup()
   // Inisialisasi LCD
   lcd.init();
   lcd.backlight();
-  lcd.setCursor(0, 0);
-  lcd.print("Stress Test    ");
-  lcd.setCursor(0, 1);
-  lcd.print("Ready...    ");
 
   // tampilkan perintah yang tersedia diawal mulai
   // just press help
@@ -107,7 +108,6 @@ void loop()
     }
 
     // Tampilkan nilai beban dan jumlah penekanan
-    // Serial.print("Press Count: ");
     Serial.print(pressCount);
     Serial.print(", ");
     Serial.print(weight, 2);
@@ -118,11 +118,11 @@ void loop()
     lcd.setCursor(0, 0);
     lcd.print("Cycle: ");
     lcd.print(pressCount);
-    lcd.print("      ");
-    lcd.setCursor(0, 1);
-    lcd.print("Beban: ");
-    lcd.print(weight, 2);
-    mode_skala == 1 ? lcd.print("kg   ") : lcd.print("gr   ");
+    lcd.print("         ");
+    // lcd.setCursor(0, 1);
+    // lcd.print("Beban: ");
+    // lcd.print(weight, 2);
+    // mode_skala == 1 ? lcd.print("kg      ") : lcd.print("gr      ");
   }
   else
   {
@@ -130,13 +130,11 @@ void loop()
     digitalWrite(RELAY_PIN, inverseRelay);
 
     lcd.setCursor(0, 0);
-    lcd.print("btn mode     ");
-    // lcd.print(digitalRead(RELAY_PIN));
-    // lcd.print("      ");
+    lcd.print("btn mode      ");
     lcd.setCursor(0, 1);
     lcd.print("bbn: ");
     lcd.print(weight, 2);
-    mode_skala == 1 ? lcd.print("kg   ") : lcd.print("gr   ");
+    mode_skala == 1 ? lcd.print("kg      ") : lcd.print("gr      ");
   }
 
   // Periksa input dari serial untuk mengubah parameter
@@ -156,76 +154,105 @@ void handleSerialInput()
   {
     pressDuration = input.substring(6).toInt();
     saveParametersToEEPROM();
-    Serial.print("Press duration set to: ");
+    Serial.print("Press duration: ");
     Serial.println(pressDuration);
   }
   else if (input.startsWith("release:"))
   {
     releaseDuration = input.substring(8).toInt();
     saveParametersToEEPROM();
-    Serial.print("Release duration set to: ");
+    Serial.print("Release duration: ");
     Serial.println(releaseDuration);
   }
   else if (input.startsWith("start"))
   {
     isTesting = true;
-    pressCount = 0;
     Serial.println("Testing started...");
     lcd.clear();
-    lcd.print("Testing...");
+  }
+  else if (input.startsWith("pause"))
+  {
+    isTesting = false;
+    Serial.println("Testing paused...");
+    lcd.clear();
   }
   else if (input.startsWith("stop"))
   {
     isTesting = false;
+    pressCount = 0;
     Serial.println("Testing stopped.");
+    Serial.print("press count restarted: ");
+    Serial.println(pressCount);
     lcd.clear();
-    lcd.print("Test Stopped");
   }
   else if (input.startsWith("tare"))
   {
     scale.tare();
     Serial.println("Load cell tared.");
-    lcd.clear();
-    lcd.print("Tared");
   }
   else if (input.startsWith("calibrate:"))
   {
     calibrationFactor = input.substring(10).toFloat();
     scale.set_scale(calibrationFactor);
     saveParametersToEEPROM();
-    Serial.print("Calibration factor set to: ");
+    Serial.print("Calibration factor: ");
     Serial.println(calibrationFactor);
   }
   else if (input.startsWith("inv_relay:"))
   {
     inverseRelay = input.substring(10).toInt();
     saveParametersToEEPROM();
-    Serial.print("inverse relay set to: ");
+    Serial.print("inverse relay: ");
     Serial.println(inverseRelay);
   }
   else if (input.startsWith("mode_skala:"))
   {
     mode_skala = input.substring(11).toInt();
     saveParametersToEEPROM();
-    Serial.print("mode skala : ");
+    Serial.print("mode skala: ");
     mode_skala == 1 ? Serial.println("kg") : Serial.println("gram");
   }
   else if (input.startsWith("calibration"))
   {
     calibrateLoadCell();
   }
+  else if (input.startsWith("lihat_data"))
+  {
+    Serial.print("Press Duration: ");
+    Serial.println(pressDuration);
+    Serial.print("Release Duration: ");
+    Serial.println(releaseDuration);
+    Serial.print("Calibration Factor: ");
+    Serial.println(calibrationFactor);
+    Serial.print("Inverse Relay: ");
+    Serial.println(inverseRelay);
+    Serial.print("Mode Skala: ");
+    mode_skala == 1 ? Serial.println("kilogram") : Serial.println("gram");
+    Serial.print("Press Count: ");
+    Serial.println(pressCount);
+  }
+  else if (input.startsWith("press_count:"))
+  {
+    pressCount = input.substring(12).toInt();
+    // saveParametersToEEPROM(); // jangan simpan parameter press_count ke eeprom
+    Serial.print("press count: ");
+    Serial.println(pressCount);
+  }
   else
   {
     Serial.println("Available commands:");
-    Serial.println("press:<ms>       - Set press duration");
-    Serial.println("release:<ms>     - Set release duration");
-    Serial.println("start            - Start testing");
-    Serial.println("stop             - Stop testing");
-    Serial.println("tare             - Tare the load cell");
-    Serial.println("calibrate:<f>    - Set calibration factor");
-    Serial.println("calibration      - Start load cell calibration");
-    Serial.println("inv_relay:<1/0>  - inverse relay value (low active or high active)");
-    Serial.println("mode_skala:<1/0> - pakai kilogram atau gram (1 kg, 0 gram)");
+    Serial.println("press:<ms>");
+    Serial.println("release:<ms>");
+    Serial.println("start");
+    Serial.println("pause");
+    Serial.println("stop");
+    Serial.println("tare");
+    Serial.println("calibrate:<f>");
+    Serial.println("calibration");
+    Serial.println("inv_relay:<1/0>");
+    Serial.println("mode_skala:<1/0> <kg/gr>");
+    Serial.println("lihat_data");
+    Serial.println("press_count:<int>");
   }
 }
 
@@ -233,18 +260,18 @@ void handleSerialInput()
 void calibrateLoadCell()
 {
   scale.set_scale();
-  Serial.println("Tare... remove any weights from the scale.");
+  Serial.println("Tare, remove any weights");
   delay(5000);
   scale.tare();
   Serial.println("Tare done...");
-  Serial.println("Place a known weight on the load cell.");
+  Serial.println("Place a known weight");
   delay(5000); // Tunggu 5 detik untuk menempatkan beban
 
   float rawValue = scale.get_units(10);
   Serial.print("Raw value: ");
   Serial.println(rawValue);
 
-  Serial.println("Enter the weight in grams:");
+  Serial.println("Enter the weight in gr:");
   while (!Serial.available())
   {
     delay(100);
@@ -255,7 +282,7 @@ void calibrateLoadCell()
   scale.set_scale(calibrationFactor);
   saveParametersToEEPROM();
 
-  Serial.print("Calibration completed. New calibration factor: ");
+  Serial.print("Completed. New cal factor: ");
   Serial.println(calibrationFactor);
 }
 
@@ -267,7 +294,7 @@ void saveParametersToEEPROM()
   EEPROM.put(EEPROM_CALIBRATION_FACTOR_ADDR, calibrationFactor);
   EEPROM.put(EEPROM_CALIBRATION_FACTOR_ADDR, inverseRelay);
   EEPROM.put(EEPROM_MODE_SKALA_ADDR, mode_skala);
-  Serial.println("Parameters saved to EEPROM.");
+  Serial.println("saved.");
 }
 
 // Muat parameter dari EEPROM
@@ -284,6 +311,7 @@ void loadParametersFromEEPROM()
     calibrationFactor = 2280.0; // Default nilai kalibrasi
   }
 
+#if DEBUG_MODE == 1
   Serial.println("Parameters loaded from EEPROM.");
   // Serial.print("Press Duration: ");
   Serial.println(pressDuration);
@@ -295,5 +323,6 @@ void loadParametersFromEEPROM()
   Serial.println(inverseRelay);
   // Serial.print("Mode Skala: ");
   Serial.println(mode_skala);
-  // mode_skala == 1 ? Serial.println("kilogram") : Serial.println("gram");
+// mode_skala == 1 ? Serial.println("kilogram") : Serial.println("gram");
+#endif
 }
