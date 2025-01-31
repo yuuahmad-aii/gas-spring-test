@@ -5,15 +5,28 @@
 
 // konfigurasi setting parameter
 #define DEBUG_MODE 0
+#define DENGAN_LCD 0
+#define ARDUINO_NANO 0
 
 // Pin konfigurasi
-#define DT_PIN A1    // Data pin HX711
-#define SCK_PIN A0   // Clock pin HX711
+#if ARDUINO_NANO == 1
+#define DT_PIN 2     // Data pin HX711
+#define SCK_PIN 3    // Clock pin HX711
 #define RELAY_PIN 13 // Pin untuk relay
+#else
+#define DT_PIN PB11   // Data pin HX711
+#define SCK_PIN PB10  // Clock pin HX711
+#define LED_PIN PB2   // Pin untuk relay
+#define RELAY_PIN PB0 // Pin untuk relay
+#endif
+// #define RELAY_PIN1 12 // Pin untuk relay
+// #define RELAY_PIN2 11 // Pin untuk relay
 
 // Objek HX711 dan LCD
 HX711 scale;
+#if DENGAN_LCD == 1
 LiquidCrystal_I2C lcd(0x27, 16, 2);
+#endif
 
 // Parameter default
 unsigned int pressDuration = 2000;   // Lama penekanan (ms)
@@ -44,7 +57,7 @@ void handleSerialInput();
 // Fungsi setup
 void setup()
 {
-  Serial.begin(9600);
+  Serial.begin(115200);
 
   // Inisialisasi HX711
   scale.begin(DT_PIN, SCK_PIN);
@@ -59,10 +72,16 @@ void setup()
   // Inisialisasi relay
   pinMode(RELAY_PIN, OUTPUT);
   digitalWrite(RELAY_PIN, inverseRelay);
+  // pinMode(RELAY_PIN1, OUTPUT);
+  // digitalWrite(RELAY_PIN1, inverseRelay);
+  // pinMode(RELAY_PIN2, OUTPUT);
+  // digitalWrite(RELAY_PIN2, inverseRelay);
 
-  // Inisialisasi LCD
+// Inisialisasi LCD
+#if DENGAN_LCD == 1
   lcd.init();
-  lcd.backlight();
+  lcd.noBacklight();
+#endif
 
   // tampilkan perintah yang tersedia diawal mulai
   // just press help
@@ -76,6 +95,7 @@ void setup()
   // Serial.println("calibration      - Start load cell calibration");
   // Serial.println("inv_relay:<1/0>  - inverse relay value (low active or high active)");
   // Serial.println("mode_skala:<1/0> - pakai kilogram atau gram (1 kg, 0 gram)");
+  Serial.println("memulai program");
 }
 
 void loop()
@@ -96,6 +116,8 @@ void loop()
       relayState = !inverseRelay;
       previousMillis = currentMillis;
       digitalWrite(RELAY_PIN, HIGH);
+      // digitalWrite(RELAY_PIN1, HIGH);
+      // digitalWrite(RELAY_PIN2, HIGH);
       pressCount++;
     }
 
@@ -105,6 +127,8 @@ void loop()
       relayState = inverseRelay;
       previousMillis = currentMillis;
       digitalWrite(RELAY_PIN, LOW);
+      // digitalWrite(RELAY_PIN1, LOW);
+      // digitalWrite(RELAY_PIN2, LOW);
     }
 
     // Tampilkan nilai beban dan jumlah penekanan
@@ -115,10 +139,12 @@ void loop()
     Serial.println(relayState);
 
     // nonaktifkan pesan lcd
+#if DENGAN_LCD == 1
     lcd.setCursor(0, 0);
     lcd.print("Cycle: ");
     lcd.print(pressCount);
     lcd.print("         ");
+#endif
     // lcd.setCursor(0, 1);
     // lcd.print("Beban: ");
     // lcd.print(weight, 2);
@@ -128,13 +154,17 @@ void loop()
   {
     // reset nilai relay
     digitalWrite(RELAY_PIN, inverseRelay);
+    // digitalWrite(RELAY_PIN1, inverseRelay);
+    // digitalWrite(RELAY_PIN2, inverseRelay);
 
+#if DENGAN_LCD == 1
     lcd.setCursor(0, 0);
     lcd.print("btn mode      ");
     lcd.setCursor(0, 1);
     lcd.print("bbn: ");
     lcd.print(weight, 2);
     mode_skala == 1 ? lcd.print("kg      ") : lcd.print("gr      ");
+#endif
   }
 
   // Periksa input dari serial untuk mengubah parameter
@@ -168,13 +198,17 @@ void handleSerialInput()
   {
     isTesting = true;
     Serial.println("Testing started...");
+#if DENGAN_LCD == 1
     lcd.clear();
+#endif
   }
   else if (input.startsWith("pause"))
   {
     isTesting = false;
     Serial.println("Testing paused...");
+#if DENGAN_LCD == 1
     lcd.clear();
+#endif
   }
   else if (input.startsWith("stop"))
   {
@@ -183,7 +217,9 @@ void handleSerialInput()
     Serial.println("Testing stopped.");
     Serial.print("press count restarted: ");
     Serial.println(pressCount);
+#if DENGAN_LCD == 1
     lcd.clear();
+#endif
   }
   else if (input.startsWith("tare"))
   {
